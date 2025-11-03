@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>Gerador de Jogos — Lotofácil</title>
+    <style>
+      :root {
+        --bg: #0b0e14;
+        --card: #131826;
+        --muted: #9aa4b2;
+        --text: #e7e7ea;
+        --accent: #7c5cff;
+        --line: #222a45;
+        --ok: #16a34a;
+        --err: #ef4444;
+        --warn: #f59e0b;
+        --info: #3b82f6;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 500 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu;
+      }
+      .wrap {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 14px 14px 80px;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 8px 0 12px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+      .small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .grid25 {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+      }
+      @media (min-width: 720px) {
+        .grid25 {
+          grid-template-columns: repeat(10, 1fr);
+        }
+      }
+      .num {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 0.7rem 0;
+        font-weight: 800;
+        cursor: pointer;
+        background: #161a2a;
+        color: #616161;
+      }
+      .num.sel {
+        background: #1f2741;
+        border-color: #3b4a7a;
+        color: #fae7e7;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      input,
+      .input {
+        width: 100%;
+        padding: 0.65rem 0.75rem;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #0e1322;
+        color: var(--text);
+      }
+      label {
+        font-size: 12px;
+        color: #c8d0e0;
+        margin-bottom: 6px;
+        display: block;
+      }
+      .games {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .game {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 8px;
+        align-items: center;
+        background: #0f1424;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 8px;
+      }
+      .game label {
+        margin: 0;
+        color: #c8d0e0;
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+      }
+      .btn {
+        border: 1px solid var(--line);
+        background: #181f33;
+        color: var(--text);
+        padding: 0.7rem 0.9rem;
+        border-radius: 12px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn-accent {
+        background: var(--accent);
+        border-color: transparent;
+        color: #fff;
+      }
+      .btn-ghost {
+        background: transparent;
+      }
+      .bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        backdrop-filter: blur(6px);
+        background: rgba(12, 14, 20, 0.75);
+        border-top: 1px solid var(--line);
+        padding: 10px;
+      }
+      .bar .wrap {
+        padding: 0;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .kvs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .kv {
+        border: 1px solid var(--line);
+        background: #0f1424;
+        border-radius: 999px;
+        padding: 0.25rem 0.6rem;
+        font-size: 12px;
+      }
+      .right {
+        display: flex;
+        gap: 8px;
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .titleRow {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* Modal */
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        padding: 16px;
+      }
+      .modal.open {
+        display: grid;
+      }
+      .scrim {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .sheet {
+        position: relative;
+        z-index: 1;
+        max-width: 640px;
+        width: 100%;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px;
+      }
+      .sheet h3 {
+        margin: 2px 0 10px;
+        font-size: 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      @media (max-width: 520px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .alert {
+        padding: 0.6rem 0.8rem;
+        border-radius: 10px;
+        background: #10152a;
+        border: 1px solid var(--line);
+        font-size: 12px;
+      }
+      .status {
+        min-height: 18px;
+        font-size: 12px;
+        margin-top: 6px;
+        color: var(--muted);
+      }
+
+      /* Snackbars */
+      #snacks {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 64px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 50;
+        pointer-events: none;
+      }
+      .snack {
+        min-width: 220px;
+        max-width: 92vw;
+        background: #10152a;
+        border: 1px solid var(--line);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 0.6rem 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        animation: slideIn 0.18s ease-out;
+        pointer-events: auto;
+      }
+      .snack .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+      }
+      .snack.success .dot {
+        background: var(--ok);
+      }
+      .snack.error .dot {
+        background: var(--err);
+      }
+      .snack.info .dot {
+        background: var(--info);
+      }
+      .snack.warn .dot {
+        background: var(--warn);
+      }
+      .snack.loading .dot {
+        background: transparent;
+        border: 2px solid var(--muted);
+        border-top-color: #fff;
+        border-radius: 999px;
+        width: 12px;
+        height: 12px;
+        animation: spin 1s linear infinite;
+      }
+      .snack .msg {
+        font-size: 14px;
+        flex: 1;
+      }
+      .snack .close {
+        background: transparent;
+        border: none;
+        color: #cfd5e4;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .snack .progress {
+        position: relative;
+        height: 2px;
+        background: #1f2540;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 6px;
+      }
+      .snack .bar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        background: #4f46e5;
+        width: 0%;
+      }
+      @keyframes slideIn {
+        from {
+          transform: translate(-50%, 12px);
+          opacity: 0;
+        }
+        to {
+          transform: translate(-50%, 0);
+          opacity: 1;
+        }
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="titleRow">
+        <h1>🎲 Gerador de Jogos — Lotofácil</h1>
+        <div class="kvs small" id="summaryKV"></div>
+      </div>
+
+      <!-- Seleção + Resultado -->
+      <div class="card">
+        <div class="row" style="justify-content: space-between">
+          <div class="small"><b id="selCount">0</b>/15 selecionados</div>
+          <button id="btnConfig" class="btn btn-ghost">⚙️ Configurar</button>
+        </div>
+        <div class="grid25" id="grid25"></div>
+
+        <div style="margin-top: 10px" class="row">
+          <div style="flex: 1 1 260px; min-width: 240px">
+            <label>Último resultado (15 números — opcional)</label>
+            <input
+              id="inResultado"
+              class="mono"
+              value="1, 3, 5, 6, 7, 9, 10, 16, 18, 19, 20, 22, 23, 24, 25"
+            />
+            <div class="hint">
+              Apenas referência visual. Não afeta a geração.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Jogos -->
+      <div class="card">
+        <div class="titleRow">
+          <h3 style="margin: 0">Jogos</h3>
+          <div class="right">
+            <button id="btnSortAll" class="btn btn-ghost">Ordenar todos</button>
+            <button id="btnClearAll" class="btn btn-ghost">Limpar</button>
+          </div>
+        </div>
+        <div id="games" class="games"></div>
+        <div id="status" class="status"></div>
+      </div>
+    </div>
+
+    <!-- Barra fixa -->
+    <div class="bar">
+      <div class="wrap">
+        <button class="btn" id="btnConfig2">⚙️ Configurar</button>
+        <div class="right">
+          <button class="btn btn-accent" id="btnGenerate">Gerar</button>
+          <button class="btn" id="btnCopy" disabled>Copiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Container de Snackbars (ARIA live) -->
+    <div id="snacks" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Modal de Configuração -->
+    <div class="modal" id="modal">
+      <div class="scrim" id="scrim"></div>
+      <div class="sheet">
+        <div class="titleRow">
+          <h3>Configurações</h3>
+          <div class="right">
+            <button class="btn" id="btnDefaults">Resetar</button>
+            <button class="btn btn-accent" id="btnClose">Concluir</button>
+          </div>
+        </div>
+        <div class="grid" style="margin-top: 8px">
+          <div>
+            <label>GAMES (jogos)</label
+            ><input id="inGames" type="number" min="1" step="1" value="10" />
+          </div>
+          <div>
+            <label>PER_GAME_FROM_1 (por jogo do Pool 1)</label
+            ><input id="inPG1" type="number" min="0" step="1" value="9" />
+          </div>
+          <div>
+            <label>PER_GAME_FROM_2 (por jogo do Pool 2)</label
+            ><input id="inPG2" type="number" min="0" step="1" value="8" />
+          </div>
+          <div>
+            <label>REPEAT_POOL1</label
+            ><input id="inR1" type="number" min="1" step="1" value="6" />
+          </div>
+          <div>
+            <label>REPEAT_POOL2</label
+            ><input id="inR2" type="number" min="1" step="1" value="8" />
+          </div>
+          <div>
+            <label>&nbsp;</label
+            ><button id="btnAuto" class="btn" style="width: 100%">
+              Ajustar automaticamente
+            </button>
+          </div>
+        </div>
+        <div id="equations" class="alert mono" style="margin-top: 10px"></div>
+      </div>
+    </div>
+
+    <script>
+      // ===== Estado & elementos
+      const grid = document.getElementById("grid25");
+      const selCount = document.getElementById("selCount");
+      const gamesEl = document.getElementById("games");
+      const statusEl = document.getElementById("status");
+      const inResultado = document.getElementById("inResultado");
+      const summaryKV = document.getElementById("summaryKV");
+
+      // Modal
+      const modal = document.getElementById("modal");
+      const scrim = document.getElementById("scrim");
+      const btnConfig = document.getElementById("btnConfig");
+      const btnConfig2 = document.getElementById("btnConfig2");
+      const btnClose = document.getElementById("btnClose");
+
+      // Config inputs
+      const inGames = document.getElementById("inGames");
+      const inPG1 = document.getElementById("inPG1");
+      const inPG2 = document.getElementById("inPG2");
+      const inR1 = document.getElementById("inR1");
+      const inR2 = document.getElementById("inR2");
+      const equations = document.getElementById("equations");
+      const btnAuto = document.getElementById("btnAuto");
+      const btnDefaults = document.getElementById("btnDefaults");
+
+      // Actions
+      const btnGenerate = document.getElementById("btnGenerate");
+      const btnCopy = document.getElementById("btnCopy");
+      const btnSortAll = document.getElementById("btnSortAll");
+      const btnClearAll = document.getElementById("btnClearAll");
+
+      const selected = new Set();
+      const ALL_1_25 = Array.from({ length: 25 }, (_, i) => i + 1);
+
+      // ===== Snackbars
+      const snacksEl = document.getElementById("snacks");
+      const SNACK_DEFAULT_MS = 2600;
+      function snack(
+        message,
+        type = "info",
+        {
+          duration = SNACK_DEFAULT_MS,
+          showProgress = true,
+          dismissible = true,
+        } = {}
+      ) {
+        const el = document.createElement("div");
+        el.className = `snack ${type}`;
+        el.setAttribute("role", "status");
+        el.innerHTML = `
+      <div class="dot"></div>
+      <div class="msg">${message}</div>
+      ${
+        dismissible
+          ? `<button class="close" aria-label="Fechar">×</button>`
+          : ""
+      }
+    `;
+        // progress bar
+        let bar,
+          start,
+          raf,
+          remaining = duration;
+        if (showProgress && duration > 0) {
+          const p = document.createElement("div");
+          p.className = "progress";
+          bar = document.createElement("div");
+          bar.className = "bar";
+          p.appendChild(bar);
+          el.appendChild(p);
+          start = performance.now();
+          const tick = (t) => {
+            const elapsed = t - start;
+            const pct = Math.min(100, (elapsed / duration) * 100);
+            bar.style.width = pct + "%";
+            if (pct < 100) raf = requestAnimationFrame(tick);
+          };
+          raf = requestAnimationFrame(tick);
+        }
+        // close helpers
+        let timer;
+        function close() {
+          el.style.opacity = "0";
+          el.style.transform = "translate(-50%,6px)";
+          if (raf) cancelAnimationFrame(raf);
+          clearTimeout(timer);
+          setTimeout(() => el.remove(), 150);
+        }
+        if (dismissible) {
+          el.addEventListener("click", (e) => {
+            if (e.target.closest(".close")) close();
+          });
+        }
+        snacksEl.appendChild(el);
+        if (duration > 0) {
+          timer = setTimeout(close, duration);
+        }
+        return { close, el };
+      }
+
+      // ===== Helpers
+      function toInts(str) {
+        return str
+          .split(/[,\s]+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map(Number)
+          .filter((n) => Number.isInteger(n));
+      }
+      function shuffle(arr) {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      }
+      function currentPools() {
+        const pool1 = Array.from(selected).sort((a, b) => a - b);
+        const pool2 = ALL_1_25.filter((n) => !selected.has(n)).sort(
+          (a, b) => a - b
+        );
+        return { pool1, pool2 };
+      }
+      function updateSummary() {
+        const { pool1, pool2 } = currentPools();
+        summaryKV.innerHTML = [
+          `<span class="kv">Pool1: ${pool1.length}</span>`,
+          `<span class="kv">Pool2: ${pool2.length}</span>`,
+          `<span class="kv">Jogos: ${inGames.value}</span>`,
+        ].join("");
+      }
+
+      // ===== Grid
+      function renderGrid() {
+        grid.innerHTML = "";
+        for (const n of ALL_1_25) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "num" + (selected.has(n) ? " sel" : "");
+          b.textContent = n.toString().padStart(2, "0");
+          b.onclick = () => {
+            if (selected.has(n)) selected.delete(n);
+            else {
+              if (selected.size >= 15) {
+                snack("Máx. 15 números no Pool 1.", "warn");
+                return;
+              }
+              selected.add(n);
+            }
+            selCount.textContent = selected.size;
+            b.classList.toggle("sel");
+            updateEquations();
+            updateSummary();
+          };
+          grid.appendChild(b);
+        }
+      }
+
+      // ====== Algoritmo
+      function generateGames(config) {
+        const {
+          nums1,
+          nums2,
+          GAMES,
+          PER_GAME_FROM_1,
+          PER_GAME_FROM_2,
+          REPEAT_POOL1,
+          REPEAT_POOL2,
+          maxAttempts = 300,
+        } = config;
+        const games = Array.from({ length: GAMES }, (_, i) => ({
+          id: i + 1,
+          set: new Set(),
+        }));
+        function allocatePoolNumbers(
+          poolNums,
+          repeatEach,
+          perGameNeeded,
+          label
+        ) {
+          const totalToPlace = poolNums.length * repeatEach;
+          const expected = perGameNeeded.reduce((a, b) => a + b, 0);
+          if (expected !== totalToPlace)
+            throw new Error(
+              `[${label}] Soma de vagas (${expected}) != total a alocar (${totalToPlace}).`
+            );
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            for (const g of games) {
+              for (const n of [...g.set])
+                if (poolNums.includes(n)) g.set.delete(n);
+            }
+            const remaining = perGameNeeded.slice();
+            const tokens = [];
+            for (const n of poolNums) {
+              for (let k = 0; k < repeatEach; k++) tokens.push(n);
+            }
+            shuffle(tokens);
+            let failed = false;
+            for (const n of tokens) {
+              const cands = [];
+              for (let gi = 0; gi < GAMES; gi++) {
+                if (remaining[gi] > 0 && !games[gi].set.has(n)) cands.push(gi);
+              }
+              if (!cands.length) {
+                failed = true;
+                break;
+              }
+              let bestCap = -1,
+                best = [];
+              for (const gi of cands) {
+                const cap = remaining[gi];
+                if (cap > bestCap) {
+                  bestCap = cap;
+                  best = [gi];
+                } else if (cap === bestCap) {
+                  best.push(gi);
+                }
+              }
+              const chosen = best[Math.floor(Math.random() * best.length)];
+              games[chosen].set.add(n);
+              remaining[chosen]--;
+            }
+            if (!failed) return;
+          }
+          throw new Error(`[${label}] Falha após ${maxAttempts} tentativas.`);
+        }
+        allocatePoolNumbers(
+          nums1,
+          REPEAT_POOL1,
+          Array(GAMES).fill(PER_GAME_FROM_1),
+          "pool1"
+        );
+        allocatePoolNumbers(
+          nums2,
+          REPEAT_POOL2,
+          Array(GAMES).fill(PER_GAME_FROM_2),
+          "pool2"
+        );
+
+        const out = games.map((g) => ({
+          id: g.id,
+          nums: Array.from(g.set).sort((a, b) => a - b),
+        }));
+
+        for (const g of out) {
+          if (
+            g.nums.length !==
+            config.PER_GAME_FROM_1 + config.PER_GAME_FROM_2
+          ) {
+            throw new Error(
+              `Jogo ${g.id} com ${g.nums.length} números (esperado ${
+                config.PER_GAME_FROM_1 + config.PER_GAME_FROM_2
+              }).`
+            );
+          }
+        }
+        const counts = new Map();
+        for (const g of out)
+          for (const n of g.nums) counts.set(n, (counts.get(n) || 0) + 1);
+        for (const n of config.nums1)
+          if (counts.get(n) !== config.REPEAT_POOL1)
+            throw new Error(
+              `Número ${n} (pool1) repetiu ${counts.get(n)} != ${
+                config.REPEAT_POOL1
+              }`
+            );
+        for (const n of config.nums2)
+          if (counts.get(n) !== config.REPEAT_POOL2)
+            throw new Error(
+              `Número ${n} (pool2) repetiu ${counts.get(n)} != ${
+                config.REPEAT_POOL2
+              }`
+            );
+
+        return out;
+      }
+
+      // ===== Render Jogos (editáveis)
+      function renderGamesEditable(list) {
+        const G = parseInt(inGames.value, 10);
+        const base =
+          list && list.length
+            ? list
+            : Array.from({ length: G }, (_, i) => ({ id: i + 1, nums: [] }));
+        gamesEl.innerHTML = base
+          .map((g) => {
+            const value = g.nums && g.nums.length ? g.nums.join(", ") : "";
+            return `
+        <div class="game">
+          <label class="mono">Jogo ${g.id}</label>
+          <input class="mono input" data-game="${g.id}" value="${value}" placeholder="Ex: 01, 02, 03, ..."/>
+          <button class="btn btn-ghost" data-sort="${g.id}" title="Ordenar">↕︎</button>
+        </div>`;
+          })
+          .join("");
+        [...gamesEl.querySelectorAll("[data-sort]")].forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = parseInt(btn.getAttribute("data-sort"), 10);
+            const inp = gamesEl.querySelector(`input[data-game="${id}"]`);
+            const arr = toInts(inp.value).sort((a, b) => a - b);
+            inp.value = arr.map((n) => String(n).padStart(2, "0")).join(", ");
+            snack(`Jogo ${id} ordenado.`, "info", { duration: 1600 });
+          });
+        });
+      }
+
+      // ===== Equações & Modal
+      function updateEquations() {
+        const { pool1, pool2 } = currentPools();
+        const G = parseInt(inGames.value || "0", 10);
+        const PG1 = parseInt(inPG1.value || "0", 10);
+        const PG2 = parseInt(inPG2.value || "0", 10);
+        const R1 = parseInt(inR1.value || "0", 10);
+        const R2 = parseInt(inR2.value || "0", 10);
+        const lhs1 = pool1.length * R1,
+          rhs1 = G * PG1;
+        const lhs2 = pool2.length * R2,
+          rhs2 = G * PG2;
+        const ok1 = lhs1 === rhs1,
+          ok2 = lhs2 === rhs2;
+        equations.innerHTML = `
+      pool1 * R1 = G * PG1  →  ${pool1.length} * ${R1} = <b>${lhs1}</b>  ${
+          ok1 ? "✅" : "❌"
+        }  ${G} * ${PG1} = <b>${rhs1}</b><br>
+      pool2 * R2 = G * PG2  →  ${pool2.length} * ${R2} = <b>${lhs2}</b>  ${
+          ok2 ? "✅" : "❌"
+        }  ${G} * ${PG2} = <b>${rhs2}</b>
+    `;
+        btnGenerate.disabled = !(selected.size === 15 && ok1 && ok2);
+      }
+      function autoAdjust() {
+        const { pool1, pool2 } = currentPools();
+        const G = Math.max(1, parseInt(inGames.value || "10", 10));
+        const PG1 = Math.max(0, parseInt(inPG1.value || "9", 10));
+        const PG2 = Math.max(0, parseInt(inPG2.value || "8", 10));
+        if (pool1.length) {
+          const t1 = G * PG1;
+          inR1.value =
+            t1 % pool1.length === 0
+              ? t1 / pool1.length
+              : Math.ceil(t1 / pool1.length);
+        }
+        if (pool2.length) {
+          const t2 = G * PG2;
+          inR2.value =
+            t2 % pool2.length === 0
+              ? t2 / pool2.length
+              : Math.ceil(t2 / pool2.length);
+        }
+        updateEquations();
+        snack("R1/R2 ajustados automaticamente.", "info", { duration: 1700 });
+      }
+      function openModal() {
+        modal.classList.add("open");
+      }
+      function closeModal() {
+        modal.classList.remove("open");
+      }
+
+      // ===== Ações
+      function handleGenerate() {
+        statusEl.textContent = "";
+        const { pool1, pool2 } = currentPools();
+        if (pool1.length !== 15) {
+          statusEl.textContent =
+            "Selecione exatamente 15 números para o Pool 1.";
+          snack("Selecione 15 números no Pool 1.", "warn");
+          return;
+        }
+        const cfg = {
+          nums1: pool1,
+          nums2: pool2,
+          GAMES: parseInt(inGames.value, 10),
+          PER_GAME_FROM_1: parseInt(inPG1.value, 10),
+          PER_GAME_FROM_2: parseInt(inPG2.value, 10),
+          REPEAT_POOL1: parseInt(inR1.value, 10),
+          REPEAT_POOL2: parseInt(inR2.value, 10),
+          maxAttempts: 400,
+        };
+        const pending = snack("Gerando jogos…", "loading", {
+          duration: 0,
+          showProgress: false,
+          dismissible: false,
+        });
+        try {
+          const out = generateGames(cfg);
+          window.__lastOut = out;
+          renderGamesEditable(out);
+          btnCopy.disabled = false;
+          statusEl.textContent = "Jogos gerados.";
+          pending.close();
+          snack("Jogos gerados com sucesso.", "success");
+        } catch (e) {
+          statusEl.textContent = "Erro: " + e.message;
+          pending.close();
+          snack(`Erro: ${e.message}`, "error", { duration: 4200 });
+          btnCopy.disabled = true;
+        }
+      }
+
+      function handleCopy() {
+        const inputs = [...gamesEl.querySelectorAll("input[data-game]")];
+        const lines = inputs
+          .map((inp) => {
+            const id = inp.getAttribute("data-game");
+            const arr = toInts(inp.value);
+            return `Jogo ${id}: [${arr.join(", ")}]`;
+          })
+          .join("\n");
+        if (!lines.trim()) {
+          snack("Não há jogos para copiar.", "warn");
+          return;
+        }
+        navigator.clipboard
+          .writeText(lines)
+          .then(() => {
+            statusEl.textContent = "Copiado para a área de transferência.";
+            snack("Jogos copiados para a área de transferência.", "success");
+          })
+          .catch(() => {
+            statusEl.textContent = "Não foi possível copiar automaticamente.";
+            snack("Falha ao copiar para a área de transferência.", "error");
+          });
+      }
+
+      function sortAll() {
+        [...gamesEl.querySelectorAll("input[data-game]")].forEach((inp) => {
+          const arr = toInts(inp.value).sort((a, b) => a - b);
+          inp.value = arr.map((n) => String(n).padStart(2, "0")).join(", ");
+        });
+        snack("Todos os jogos ordenados.", "info", { duration: 1600 });
+      }
+      function clearAll() {
+        [...gamesEl.querySelectorAll("input[data-game]")].forEach(
+          (inp) => (inp.value = "")
+        );
+        statusEl.textContent = "Jogos limpos. Você pode editar manualmente.";
+        snack("Jogos limpos.", "info", { duration: 1400 });
+      }
+
+      // ===== Init
+      for (let n = 1; n <= 15; n++) selected.add(n);
+      selCount.textContent = selected.size;
+      renderGrid();
+      updateEquations();
+      updateSummary();
+      renderGamesEditable([]);
+
+      // Eventos
+      [inGames, inPG1, inPG2, inR1, inR2].forEach((el) =>
+        el.addEventListener("input", () => {
+          updateEquations();
+          updateSummary();
+        })
+      );
+      btnAuto.addEventListener("click", autoAdjust);
+      btnDefaults.addEventListener("click", () => {
+        inGames.value = 10;
+        inPG1.value = 9;
+        inPG2.value = 8;
+        inR1.value = 6;
+        inR2.value = 8;
+        updateEquations();
+        updateSummary();
+        snack("Configurações resetadas.", "info", { duration: 1400 });
+      });
+
+      btnConfig.addEventListener("click", openModal);
+      btnConfig2.addEventListener("click", openModal);
+      btnClose.addEventListener("click", closeModal);
+      scrim.addEventListener("click", closeModal);
+
+      btnGenerate.addEventListener("click", handleGenerate);
+      btnCopy.addEventListener("click", handleCopy);
+      btnSortAll.addEventListener("click", sortAll);
+      btnClearAll.addEventListener("click", clearAll);
+
+      inResultado.addEventListener("input", () => {
+        /* apenas referência visual */
+      });
+    </script>
+  </body>
+</html>
