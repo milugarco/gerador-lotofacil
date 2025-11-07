@@ -380,6 +380,11 @@
         </div>
         <div id="games" class="games"></div>
         <div id="status" class="status"></div>
+        <!-- Frequência desta geração -->
+        <div id="countsSection" style="margin-top: 12px; display: none">
+          <label>Frequência nesta geração</label>
+          <div id="countsGrid" class="grid25" style="margin-top: 6px"></div>
+        </div>
       </div>
     </div>
 
@@ -491,14 +496,14 @@
         el.className = `snack ${type}`;
         el.setAttribute("role", "status");
         el.innerHTML = `
-      <div class="dot"></div>
-      <div class="msg">${message}</div>
-      ${
-        dismissible
-          ? `<button class="close" aria-label="Fechar">×</button>`
-          : ""
-      }
-    `;
+        <div class="dot"></div>
+        <div class="msg">${message}</div>
+        ${
+          dismissible
+            ? `<button class="close" aria-label="Fechar">×</button>`
+            : ""
+        }
+      `;
         // progress bar
         let bar,
           start,
@@ -600,6 +605,23 @@
         }
       }
 
+      function renderCounts(countsMap) {
+        const section = document.getElementById("countsSection");
+        const countsGrid = document.getElementById("countsGrid");
+        const items = [];
+        for (let n = 1; n <= 25; n++) {
+          const entry = countsMap.get(n);
+          const qtd = entry?.count ?? 0;
+          items.push(
+            `<div class="num sel" style="display:flex;flex-direction:column;gap:2px;padding:0.5rem 0.4rem;cursor:default">
+         <div>${String(n).padStart(2, "0")}</div>
+         <div class="small" style="opacity:.9">${qtd}x</div>
+       </div>`
+          );
+        }
+        countsGrid.innerHTML = items.join("");
+        section.style.display = "block";
+      }
       // ====== Algoritmo
       function generateGames(config) {
         const {
@@ -612,10 +634,12 @@
           REPEAT_POOL2,
           maxAttempts = 300,
         } = config;
+
         const games = Array.from({ length: GAMES }, (_, i) => ({
           id: i + 1,
           set: new Set(),
         }));
+
         function allocatePoolNumbers(
           poolNums,
           repeatEach,
@@ -624,21 +648,26 @@
         ) {
           const totalToPlace = poolNums.length * repeatEach;
           const expected = perGameNeeded.reduce((a, b) => a + b, 0);
+
           if (expected !== totalToPlace)
             throw new Error(
               `[${label}] Soma de vagas (${expected}) != total a alocar (${totalToPlace}).`
             );
+
           for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            // limpa ocorrências anteriores do pool
             for (const g of games) {
               for (const n of [...g.set])
                 if (poolNums.includes(n)) g.set.delete(n);
             }
+
             const remaining = perGameNeeded.slice();
             const tokens = [];
             for (const n of poolNums) {
               for (let k = 0; k < repeatEach; k++) tokens.push(n);
             }
             shuffle(tokens);
+
             let failed = false;
             for (const n of tokens) {
               const cands = [];
@@ -664,16 +693,20 @@
               games[chosen].set.add(n);
               remaining[chosen]--;
             }
+
             if (!failed) return;
           }
+
           throw new Error(`[${label}] Falha após ${maxAttempts} tentativas.`);
         }
+
         allocatePoolNumbers(
           nums1,
           REPEAT_POOL1,
           Array(GAMES).fill(PER_GAME_FROM_1),
           "pool1"
         );
+
         allocatePoolNumbers(
           nums2,
           REPEAT_POOL2,
@@ -686,6 +719,7 @@
           nums: Array.from(g.set).sort((a, b) => a - b),
         }));
 
+        // ======= Validações =======
         for (const g of out) {
           if (
             g.nums.length !==
@@ -699,24 +733,56 @@
           }
         }
         const counts = new Map();
-        for (const g of out)
-          for (const n of g.nums) counts.set(n, (counts.get(n) || 0) + 1);
-        for (const n of config.nums1)
-          if (counts.get(n) !== config.REPEAT_POOL1)
-            throw new Error(
-              `Número ${n} (pool1) repetiu ${counts.get(n)} != ${
-                config.REPEAT_POOL1
-              }`
-            );
-        for (const n of config.nums2)
-          if (counts.get(n) !== config.REPEAT_POOL2)
-            throw new Error(
-              `Número ${n} (pool2) repetiu ${counts.get(n)} != ${
-                config.REPEAT_POOL2
-              }`
-            );
+        for (const g of out) {
+          for (const n of g.nums) {
+            if (!counts.has(n)) {
+              counts.set(n, { n, count: 1 });
+            } else {
+              const entry = counts.get(n);
+              entry.count += 1;
+              counts.set(n, entry);
+            }
+          }
+        }
 
-        return out;
+        for (const n of config.nums1) {
+          const entry = counts.get(n);
+          const got = entry ? entry.count : 0;
+          if (got !== config.REPEAT_POOL1) {
+            throw new Error(
+              `Número ${n} (pool1) repetiu ${got}x != ${config.REPEAT_POOL1}x`
+            );
+          }
+        }
+
+        for (const n of config.nums2) {
+          const entry = counts.get(n);
+          const got = entry ? entry.count : 0;
+          if (got !== config.REPEAT_POOL2) {
+            throw new Error(
+              `Número ${n} (pool2) repetiu ${got}x != ${config.REPEAT_POOL2}x`
+            );
+          }
+        }
+
+        // ======= LOG FINAL =======
+        console.log("\n=== Distribuição final de repetições ===");
+        const ordered = [...counts.entries()].sort((a, b) => a[0] - b[0]);
+        for (const [num, entry] of ordered) {
+          const qtd = entry?.count ?? 0;
+          console.log(`${String(num).padStart(2, "0")} → ${qtd}x`);
+        }
+        console.log("=========================================\n");
+
+        return { games: out, counts };
+      }
+
+      // simples utilitário de embaralhamento
+      function shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
       }
 
       // ===== Render Jogos (editáveis)
@@ -730,11 +796,11 @@
           .map((g) => {
             const value = g.nums && g.nums.length ? g.nums.join(", ") : "";
             return `
-        <div class="game">
-          <label class="mono">Jogo ${g.id}</label>
-          <input class="mono input" data-game="${g.id}" value="${value}" placeholder="Ex: 01, 02, 03, ..."/>
-          <button class="btn btn-ghost" data-sort="${g.id}" title="Ordenar">↕︎</button>
-        </div>`;
+          <div class="game">
+            <label class="mono">Jogo ${g.id}</label>
+            <input class="mono input" data-game="${g.id}" value="${value}" placeholder="Ex: 01, 02, 03, ..."/>
+            <button class="btn btn-ghost" data-sort="${g.id}" title="Ordenar">↕︎</button>
+          </div>`;
           })
           .join("");
         [...gamesEl.querySelectorAll("[data-sort]")].forEach((btn) => {
@@ -763,13 +829,13 @@
         const ok1 = lhs1 === rhs1,
           ok2 = lhs2 === rhs2;
         equations.innerHTML = `
-      pool1 * R1 = G * PG1  →  ${pool1.length} * ${R1} = <b>${lhs1}</b>  ${
+        pool1 * R1 = G * PG1  →  ${pool1.length} * ${R1} = <b>${lhs1}</b>  ${
           ok1 ? "✅" : "❌"
         }  ${G} * ${PG1} = <b>${rhs1}</b><br>
-      pool2 * R2 = G * PG2  →  ${pool2.length} * ${R2} = <b>${lhs2}</b>  ${
+        pool2 * R2 = G * PG2  →  ${pool2.length} * ${R2} = <b>${lhs2}</b>  ${
           ok2 ? "✅" : "❌"
         }  ${G} * ${PG2} = <b>${rhs2}</b>
-    `;
+      `;
         btnGenerate.disabled = !(selected.size === 15 && ok1 && ok2);
       }
       function autoAdjust() {
@@ -821,15 +887,17 @@
           REPEAT_POOL2: parseInt(inR2.value, 10),
           maxAttempts: 400,
         };
+
         const pending = snack("Gerando jogos…", "loading", {
           duration: 0,
           showProgress: false,
           dismissible: false,
         });
         try {
-          const out = generateGames(cfg);
-          window.__lastOut = out;
-          renderGamesEditable(out);
+          const res = generateGames(cfg);
+          window.__lastOut = res.games;
+          renderGamesEditable(res.games);
+          renderCounts(res.counts);
           btnCopy.disabled = false;
           statusEl.textContent = "Jogos gerados.";
           pending.close();
